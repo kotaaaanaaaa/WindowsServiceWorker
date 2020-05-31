@@ -62,7 +62,7 @@ namespace WindowsServiceWorker
                 ServiceContext.Instance().Services.ToList().ForEach(x =>
                 {
                     var name = x.Key;
-                    var path = Path.GetFullPath(@"WindowsServiceWorker.exe");
+                    var path = Process.GetCurrentProcess().MainModule.FileName;
 
                     if (installOption.HasValue())
                     {
