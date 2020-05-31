@@ -8,6 +8,8 @@ namespace WindowsServiceWorker
 {
     public class ServiceWorker : IHostedService, IDisposable
     {
+        private string BasePath { get; set; }
+
         private string ServiceName { get; set; }
 
         private string ServiceExe { get; set; }
@@ -18,10 +20,11 @@ namespace WindowsServiceWorker
 
         private System.Timers.Timer Timer { get; set; }
 
-        private bool isExecuting = false;
+        private Process RunningProcess { get; set; }
 
         public Task StartAsync(CancellationToken token)
         {
+            BasePath = ServiceContext.Instance().Get("BasePath");
             ServiceName = ServiceContext.Instance().Get("ServiceName");
             ServiceExe = ServiceContext.Instance().GetService(ServiceName, "Exe");
             ServiceArg = ServiceContext.Instance().GetService(ServiceName, "Arg");
@@ -31,39 +34,60 @@ namespace WindowsServiceWorker
             {
                 var interval = int.Parse(ServiceContext.Instance().GetService(ServiceName, "Interval"));
                 Timer = new System.Timers.Timer(interval);
-                Timer.Elapsed += Elapsed;
+                Timer.Elapsed += Pooling;
                 Timer.Start();
             }
-            Main();
+            else
+            {
+                RunningProcess = Setup();
+                RunningProcess.Start();
+
+                var interval = 1000;
+                Timer = new System.Timers.Timer(interval);
+                Timer.Elapsed += HealthCheck;
+                Timer.Start();
+            }
 
             return Task.CompletedTask;
         }
 
-        private void Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        private void Pooling(object sender, System.Timers.ElapsedEventArgs e)
         {
-            if (!isExecuting)
+            if (!RunningProcess.HasExited)
             {
-                isExecuting = true;
-                Main();
-                isExecuting = false;
+                RunningProcess = Setup();
+                RunningProcess.Start();
             }
         }
 
-        public void Main()
+        private void HealthCheck(object sender, System.Timers.ElapsedEventArgs e)
         {
-            var process = new Process();
-            process.StartInfo.FileName = ServiceExe;
-            process.StartInfo.Arguments = ServiceArg;
-            process.Start();
-            process.WaitForExit();
+            if (RunningProcess.HasExited)
+            {
+                RunningProcess = Setup();
+                RunningProcess.Start();
+            }
         }
 
+        public Process Setup()
+        {
+            var prc = new Process();
+            prc.StartInfo.WorkingDirectory = BasePath;
+            prc.StartInfo.FileName = ServiceExe;
+            prc.StartInfo.Arguments = ServiceArg;
+            return prc;
+        }
+        
         public Task StopAsync(CancellationToken token)
         {
-            if (IsPolling)
+            Timer.Stop();
+            Timer.Elapsed -= Pooling;
+            Timer.Elapsed -= HealthCheck;
+
+            RunningProcess.WaitForExit(10000);
+            if (!RunningProcess.HasExited)
             {
-                Timer.Stop();
-                Timer.Elapsed -= Elapsed;
+                RunningProcess.Kill();
             }
 
             return Task.CompletedTask;
@@ -72,6 +96,7 @@ namespace WindowsServiceWorker
         public void Dispose()
         {
             Timer?.Dispose();
+            RunningProcess.Dispose();
         }
     }
 }

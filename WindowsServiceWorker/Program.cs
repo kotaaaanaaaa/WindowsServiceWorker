@@ -2,13 +2,13 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace WindowsServiceWorker
 {
@@ -59,42 +59,61 @@ namespace WindowsServiceWorker
                     return 0;
                 }
 
-                ServiceContext.Instance().Services.ToList().ForEach(x =>
+                if (installOption.HasValue())
                 {
-                    var name = x.Key;
-                    var path = Process.GetCurrentProcess().MainModule.FileName;
-                    var disp = ServiceContext.Instance().GetService(name, "Display");
-                    var desc = ServiceContext.Instance().GetService(name, "Description");
+                    ServiceContext.Instance().Services.ToList().ForEach(x =>
+                    {
+                        var name = x.Key;
+                        var path = Process.GetCurrentProcess().MainModule.FileName;
+                        var disp = ServiceContext.Instance().GetService(name, "Display");
+                        var desc = ServiceContext.Instance().GetService(name, "Description");
 
-                    if (installOption.HasValue())
+                        Console.WriteLine($"install::{name}");
+                        if (!ServiceAccessor.IsInstalled(name))
+                        {
+                            ServiceAccessor.Install(name, path, disp, desc);
+                        }
+                    });
+                    return 0;
+                }
+                if (uninstallOption.HasValue())
+                {
+                    ServiceContext.Instance().Services.ToList().ForEach(x =>
                     {
-                        ServiceAccessor.Install(name, path, disp, desc);
-                    }
-                    else if (uninstallOption.HasValue())
-                    {
-                        ServiceAccessor.Uninstall(name);
-                    }
-                    else if (ServiceAccessor.IsInstalled(name))
-                    {
-                        var process = new Process();
-                        process.StartInfo.FileName = path;
-                        process.StartInfo.Arguments = @"--uninstall";
-                        process.StartInfo.Verb = "RunAs";
-                        process.StartInfo.UseShellExecute = true;
-                        process.Start();
-                        process.WaitForExit();
-                    }
-                    else
-                    {
-                        var process = new Process();
-                        process.StartInfo.FileName = path;
-                        process.StartInfo.Arguments = @"--install";
-                        process.StartInfo.Verb = "RunAs";
-                        process.StartInfo.UseShellExecute = true;
-                        process.Start();
-                        process.WaitForExit();
-                    }
-                });
+                        var name = x.Key;
+                        Console.WriteLine($"Uninstall:{name}");
+                        if (ServiceAccessor.IsInstalled(name))
+                        {
+                            ServiceAccessor.Uninstall(name);
+                        }
+                    });
+                    return 0;
+                }
+
+                var name = ServiceContext.Instance().Services.First().Key;
+                var path = Process.GetCurrentProcess().MainModule.FileName;
+                if (ServiceAccessor.IsInstalled(name))
+                {
+                    Console.WriteLine("Uninstall");
+                    var process = new Process();
+                    process.StartInfo.FileName = path;
+                    process.StartInfo.Arguments = @"--uninstall";
+                    process.StartInfo.Verb = "RunAs";
+                    process.StartInfo.UseShellExecute = true;
+                    process.Start();
+                    process.WaitForExit();
+                }
+                else
+                {
+                    Console.WriteLine("Install");
+                    var process = new Process();
+                    process.StartInfo.FileName = path;
+                    process.StartInfo.Arguments = @"--install";
+                    process.StartInfo.Verb = "RunAs";
+                    process.StartInfo.UseShellExecute = true;
+                    process.Start();
+                    process.WaitForExit();
+                }
 
                 return 0;
             });
@@ -134,8 +153,9 @@ namespace WindowsServiceWorker
 
         private static void SetServiceContext()
         {
+            ServiceContext.Instance().Set("BasePath", Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName));
+
             var conf = Configuration();
-            var services = new Dictionary<string, Dictionary<string, string>>();
             Enumerable.Range(1, Count(conf, "Services"))
                 .ToList()
                 .ForEach(x =>
