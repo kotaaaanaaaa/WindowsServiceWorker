@@ -36,7 +36,7 @@ namespace WindowsServiceWorker
         {
             var proc = new Process();
             proc.StartInfo.FileName = @"sc.exe";
-            proc.StartInfo.Arguments = $"Create {name} binPath=\"{path} --service\" start=auto";
+            proc.StartInfo.Arguments = $"Create {name} binPath=\"{path} --service {name}\" start=auto";
             proc.Start();
             proc.WaitForExit();
         }

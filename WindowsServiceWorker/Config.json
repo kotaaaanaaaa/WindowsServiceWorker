@@ -1,0 +1,11 @@
+{
+  "Services": [
+    {
+      "Name": "WindowsServiceWorkerTest",
+      "Type": "Polling",
+      "Interval": "5000",
+      "Exe": "ping.exe",
+      "Arg": "localhost -n 1"
+    },
+  ]
+}
