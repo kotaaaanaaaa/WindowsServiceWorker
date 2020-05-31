@@ -63,10 +63,12 @@ namespace WindowsServiceWorker
                 {
                     var name = x.Key;
                     var path = Process.GetCurrentProcess().MainModule.FileName;
+                    var disp = ServiceContext.Instance().GetService(name, "Display");
+                    var desc = ServiceContext.Instance().GetService(name, "Description");
 
                     if (installOption.HasValue())
                     {
-                        ServiceAccessor.Install(name, path);
+                        ServiceAccessor.Install(name, path, disp, desc);
                     }
                     else if (uninstallOption.HasValue())
                     {

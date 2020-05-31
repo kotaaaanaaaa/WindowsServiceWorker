@@ -19,9 +19,10 @@ namespace WindowsServiceWorker
             }
         }
 
-        public static void Install(string name, string path)
+        public static void Install(string name, string path, string disp, string desc)
         {
-            InstallService(name, path);
+            InstallService(name, path, disp);
+            DescriptionService(name, desc);
             FailurService(name, "restart", 1000, "restart", 1000, "restart", 1000);
             StartService(name);
         }
@@ -32,11 +33,25 @@ namespace WindowsServiceWorker
             UninstallService(name);
         }
 
-        private static void InstallService(string name, string path)
+        private static void InstallService(string name, string path, string display = null)
         {
+            if (string.IsNullOrWhiteSpace(display))
+            {
+                display = name;
+            }
+
             var proc = new Process();
             proc.StartInfo.FileName = @"sc.exe";
-            proc.StartInfo.Arguments = $"Create {name} binPath=\"{path} --service {name}\" start=auto";
+            proc.StartInfo.Arguments = $"Create \"{name}\" binPath= \"{path} --service {name}\" DisplayName= \"{display}\" start= auto";
+            proc.Start();
+            proc.WaitForExit();
+        }
+        private static void DescriptionService(string name, string desc)
+        {
+            desc += "\r\nWorking w/ Windows Service Worker.";
+            var proc = new Process();
+            proc.StartInfo.FileName = @"sc.exe";
+            proc.StartInfo.Arguments = $"Description \"{name}\" \"{desc}\"";
             proc.Start();
             proc.WaitForExit();
         }

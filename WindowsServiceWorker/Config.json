@@ -2,6 +2,8 @@
   "Services": [
     {
       "Name": "WindowsServiceWorkerTest",
+      "Display": "Windows Service Worker Test",
+      "Description": "Test Service.",
       "Type": "Polling",
       "Interval": "5000",
       "Exe": "ping.exe",
