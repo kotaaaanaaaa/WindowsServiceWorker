@@ -22,6 +22,8 @@ namespace WindowsServiceWorker
 
         private Process RunningProcess { get; set; }
 
+        private bool IsElapsing { get; set; }
+
         public Task StartAsync(CancellationToken token)
         {
             BasePath = ServiceContext.Instance().Get("BasePath");
@@ -29,6 +31,10 @@ namespace WindowsServiceWorker
             ServiceExe = ServiceContext.Instance().GetService(ServiceName, "Exe");
             ServiceArg = ServiceContext.Instance().GetService(ServiceName, "Arg");
             IsPolling = ServiceContext.Instance().GetService(ServiceName, "Type") == "Polling";
+
+            ServiceArg = ServiceArg.Replace(@"%EXEDIR%",BasePath);
+
+            IsElapsing = false;
 
             if (IsPolling)
             {
@@ -53,19 +59,23 @@ namespace WindowsServiceWorker
 
         private void Pooling(object sender, System.Timers.ElapsedEventArgs e)
         {
-            if (!RunningProcess.HasExited)
+            if (RunningProcess.HasExited && !IsElapsing)
             {
+                IsElapsing = true;
                 RunningProcess = Setup();
                 RunningProcess.Start();
+                IsElapsing = false;
             }
         }
 
         private void HealthCheck(object sender, System.Timers.ElapsedEventArgs e)
         {
-            if (RunningProcess.HasExited)
+            if (RunningProcess.HasExited && !IsElapsing)
             {
+                IsElapsing = true;
                 RunningProcess = Setup();
                 RunningProcess.Start();
+                IsElapsing = false;
             }
         }
 
