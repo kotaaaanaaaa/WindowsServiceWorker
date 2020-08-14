@@ -23,7 +23,9 @@ jobs:
       run: dotnet build --configuration Release --no-restore
     - name: Test
       run: dotnet test --no-restore --verbosity normal
+    - name: Publish
+      run: dotnet publish --configuration Release --no-restore --output WindowsServiceWorker/bin/Publish -p:PublishSingleFile=true --self-contained true
     - uses: actions/upload-artifact@v2
       with:
         name: Upload artifacts
-        path: WindowsServiceWorker/bin/Release/netcoreapp3.1
+        path: WindowsServiceWorker/bin/Publish
